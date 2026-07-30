@@ -1,23 +1,43 @@
 from fastapi import FastAPI, Request, HTTPException
+import sqlite3
 app = FastAPI()
 
-tasks = [
-    {
-        "id": 1,
-        "title": "Task 0",
-        "done": True
-    },
-    {
-        "id": 2,
-        "title": "Task 1",
-        "done" : True
-    },
-    {
-        "id": 3,
-        "title": "Task 2",
-        "done" : False
-    }
-]
+################################################################################
+#DATABASE
+tasks = []
+import sqlite3
+
+con = sqlite3.connect("task.db")
+
+
+#
+cur = con.cursor()
+#
+## Creation of table
+cur.execute("CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, done BOOLEAN)")
+
+cur.execute("SELECT COUNT(*) FROM tasks")
+COUNT = cur.fetchone()[0]
+
+if COUNT ==0:
+    cur.executemany("INSERT INTO tasks(title, done) VALUES(?, ?)", [
+        ("Task 0", True),
+        ("Task 1", True),
+        ("Task 2", False)
+    ])
+
+con.commit()
+
+
+
+
+
+#####################################################################################
+
+
+@app.get("/test")
+async def test():
+    return {}
 
 ###############################################################################
 @app.get("/", summary="API information")
@@ -32,7 +52,10 @@ async def health():
 ###############################################################################
 @app.get("/tasks", summary="Get all tasks")
 async def get_tasks():
-    return tasks
+    cur.execute("SELECT * FROM tasks")
+    taskx = cur.fetchall()
+    return taskx
+
 
 @app.get("/tasks/{id}", summary="Get task by ID")
 async def get_task_by_id(id: int):
