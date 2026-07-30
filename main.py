@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
+from pydantic import BaseModel,field_validator
 import sqlite3
 app = FastAPI()
 
@@ -66,39 +67,28 @@ async def get_task_by_id(id: int):
     return {"error": f"Task {id} not found"}
 
 ###############################################################################
+class Task(BaseModel):
+    title: str
 
-@app.post("/tasks", status_code=201, summary="Create a new task")
-async def create_task(req: Request):
+    @field_validator("title")
+    def title_not_empty(cls, value):
+        if value.strip() == "":
+            raise ValueError("Title cannot be empty")
 
-    try:
-        task = await req.json()
-    except:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid JSON"
-        )
+        return value
 
-    if "title" not in task:
-        raise HTTPException(
-            status_code=400,
-            detail="Title is required"
-        )
 
-    if task["title"].strip() == "":
-        raise HTTPException(
-            status_code=400,
-            detail="Title cannot be empty"
-        )
+@app.post("/tasks", status_code=201)
+async def create_task(task: Task):
 
-    new_task = {
-        "id": len(tasks) + 1,
-        "title": task["title"],
-        "done": False
-    }
+    cur.execute(
+        "INSERT INTO tasks(title, done) VALUES(?, ?)",
+        (task.title, False)
+    )
 
-    tasks.append(new_task)
+    con.commit()
 
-    return new_task
+    return task
 
 ###############################################################################
 
