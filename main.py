@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Response
 from pydantic import BaseModel,field_validator
 import sqlite3
 app = FastAPI()
@@ -91,15 +91,29 @@ async def create_task(task: Task):
     return task
 
 ###############################################################################
+from pydantic import BaseModel, field_validator
+
+
+class UpdateTask(BaseModel):
+    title: str
+    done: bool
+
+    @field_validator("title")
+    def title_not_empty(cls, value):
+        if value.strip() == "":
+            raise ValueError("Title cannot be empty")
+        return value
+
 
 @app.put("/tasks/{id}", summary="Update a task")
-async def update_task(id: int, req: Request):
+async def update_task(id: int, req: UpdateTask):
 
-    task = None
-    for t in tasks:
-        if t["id"] == id:
-            task = t
-            break
+    cur.execute(
+        "SELECT * FROM tasks WHERE id = ?",
+        (id,)
+    )
+
+    task = cur.fetchone()
 
     if task is None:
         raise HTTPException(
@@ -107,43 +121,32 @@ async def update_task(id: int, req: Request):
             detail=f"Task {id} not found"
         )
 
-    try:
-        data = await req.json()
-    except:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid JSON"
-        )
+    cur.execute(
+        """
+        UPDATE tasks 
+        SET title = ?, done = ?
+        WHERE id = ?
+        """,
+        (req.title, req.done, id)
+    )
 
-    if not data:
-        raise HTTPException(
-            status_code=400,
-            detail="Request body cannot be empty"
-        )
+    con.commit()
 
-    if "title" in data:
-        if data["title"].strip() == "":
-            raise HTTPException(
-                status_code=400,
-                detail="Title cannot be empty"
-            )
-        task["title"] = data["title"]
-
-    if "done" in data:
-        task["done"] = data["done"]
-
-    return task
+    return {
+        "id": id,
+        "title": req.title,
+        "done": req.done
+    }
 
 
-    from fastapi import Response
+
 
 @app.delete("/tasks/{id}", status_code=204, summary="Delete a task")
 async def delete_task(id: int):
+    cur.execute("DELETE FROM tasks WHERE id = ?", (id,))
 
-    for task in tasks:
-        if task["id"] == id:
-            tasks.remove(task)
-            return Response(status_code=204)
+    if cur.rowcount > 0:
+        return Response(status_code=204)
 
     raise HTTPException(
         status_code=404,
