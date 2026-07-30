@@ -59,9 +59,10 @@ async def get_tasks():
 
 @app.get("/tasks/{id}", summary="Get task by ID")
 async def get_task_by_id(id: int):
-    for task in tasks:
-        if task["id"] == id:
-            return task
+    id_valued = cur.execute("SELECT * FROM tasks WHERE id = ?", (id,))
+    task = id_valued.fetchone()
+    if task:
+        return task
     return {"error": f"Task {id} not found"}
 
 ###############################################################################
