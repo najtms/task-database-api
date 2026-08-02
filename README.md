@@ -95,7 +95,7 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/najtms/task-database-api.git
-cd task-api
+cd task-database-api.git
 ```
 
 Install dependencies:
@@ -125,6 +125,9 @@ Swagger UI:
 ```
 http://localhost:8000/docs
 ```
+
+
+
 
 ---
 
